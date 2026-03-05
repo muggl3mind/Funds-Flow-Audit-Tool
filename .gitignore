@@ -3,6 +3,8 @@ archive/
 /output/
 deals/*/run_output/
 deals/*/documents/
+input/*
+!input/.gitkeep
 last_run.json
 Sample data/project_meridian_output/
 .DS_Store
