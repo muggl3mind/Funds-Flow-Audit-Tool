@@ -1,5 +1,5 @@
 """
-new_deal.py — Scaffold a new deal folder for the Funds Flow Indexer.
+new_deal.py — Scaffold a new deal folder for the Funds Flow Audit Tool.
 
 Creates the following structure:
   deals/<deal_slug>/
@@ -244,7 +244,7 @@ def _build_template(
 
 
 def _parse_args():
-    p = argparse.ArgumentParser(description="Scaffold a new deal folder for the Funds Flow Indexer.")
+    p = argparse.ArgumentParser(description="Scaffold a new deal folder for the Funds Flow Audit Tool.")
     p.add_argument("--deal",          required=True,  help="Deal name (e.g. 'Project Nova')")
     p.add_argument("--closing-date",  required=True,  help="Closing date YYYY-MM-DD")
     p.add_argument("--client-role",   required=True,  choices=["buyer", "seller", "both"])

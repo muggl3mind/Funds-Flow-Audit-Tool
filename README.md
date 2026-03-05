@@ -1,4 +1,4 @@
-# Funds Flow Indexer
+# Funds Flow Audit Tool
 
 A deal audit tool for private equity transactions. Given a client's funds flow Excel and a folder of supporting PDFs, it automatically matches every cost line item to its source document, annotates the workpaper, renames documents with FF-numbered references, and produces clean deliverables.
 
@@ -58,8 +58,8 @@ npm install -g @anthropic-ai/claude-code
 
 ```bash
 # Clone the repo
-git clone https://github.com/muggl3mind/funds-flow-indexer.git
-cd funds-flow-indexer
+git clone https://github.com/muggl3mind/Funds-Flow-Audit-Tool.git
+cd Funds-Flow-Audit-Tool
 
 # Create virtual environment and install dependencies
 python3 -m venv .venv
@@ -101,7 +101,7 @@ python new_deal.py --deal "Acme Acquisition" --closing-date 2026-07-15 --client-
 ## Project structure
 
 ```
-funds-flow-indexer/
+Funds-Flow-Audit-Tool/
 ├── run.py                          # Staging: input/ → deals/<slug>/
 ├── new_deal.py                     # Scaffold empty deal folders
 ├── chart_of_accounts.json          # GL account reference for classification
