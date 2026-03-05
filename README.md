@@ -20,13 +20,11 @@ Built to run inside [Claude Code](https://docs.anthropic.com/en/docs/claude-code
 
 For each line item in the funds flow, the indexer:
 
-1. **Parses** the Excel workbook and detects which tabs are in scope (skips seller/wire/summary)
-2. **Extracts** line items from each in-scope tab (vendor, amount, fund allocation) via LLM
-3. **Parses** every PDF in the documents folder and extracts billing details (vendor, invoice number, date, amounts) via LLM with caching
-4. **Matches** documents to line items using pre-filtering (amount + vendor overlap) then LLM reasoning, and assigns GL accounts from `chart_of_accounts.json`
-5. **Classifies** exceptions — missing docs, partial support, amount mismatches, orphan docs
-6. **Writes** an annotated Excel workpaper with audit columns, an Audit Summary sheet, and PDF snapshots
-7. **Renames** matched documents with FF-numbered prefixes for clean filing
+1. **Parses** the Excel workbook and extracts line items from in-scope tabs (skips seller/wire/summary)
+2. **Parses** every PDF in the documents folder and extracts the full text
+3. **Matches** documents to line items using Claude Code's in-context reasoning, and assigns GL accounts from `chart_of_accounts.json`
+4. **Writes** `index.json` with match results, then generates an annotated Excel workpaper with audit columns, a Journal Entry tab, and PDF snapshots
+5. **Renames** matched documents with FF-numbered prefixes for clean filing
 
 ### Match statuses
 
@@ -109,40 +107,15 @@ Funds-Flow-Audit-Tool/
 ├── process_diagram.html            # Visual pipeline diagram (open in browser)
 │
 ├── agent/                          # Core pipeline
-│   ├── main.py                     # Full agent pipeline (Stages 1-7)
-│   ├── config.py                   # DealConfig dataclass
-│   ├── write_outputs.py            # Standalone orchestrator (index.json → outputs)
+│   ├── extract_funds_flow.py       # Parse Excel — extract line items from in-scope tabs
+│   ├── extract_documents.py        # Parse PDFs — extract text from all support documents
+│   ├── write_outputs.py            # Output orchestrator (index.json → deliverables)
 │   │
-│   ├── parsers/                    # Stage 1 + 3: Raw text extraction
-│   │   ├── excel_parser.py         # Parse Excel sheets into raw cell data
-│   │   ├── pdf_parser.py           # Extract text from PDFs
-│   │   └── email_parser.py         # Parse email-style PDF documents
-│   │
-│   ├── normalizers/                # Stages 2-3: LLM-driven normalization
-│   │   ├── funds_flow_normalizer.py# Tab scope detection + line item extraction
-│   │   └── document_normalizer.py  # Document billing extraction (parallel, cached)
-│   │
-│   ├── matcher/                    # Stage 4: Matching
-│   │   ├── llm_matcher.py          # LLM-driven matching + GL classification
-│   │   └── scoring.py              # Deterministic confidence scoring
-│   │
-│   ├── exceptions/                 # Stage 5: Post-match analysis
-│   │   └── exception_classifier.py # Exception classification
-│   │
-│   ├── output/                     # Stage 6: Deliverables
-│   │   ├── excel_writer.py         # Annotate client Excel with audit columns
-│   │   ├── audit_summary.py        # Audit Summary sheet (scoreboard + exceptions)
-│   │   ├── workpaper_annotator.py  # Workpaper annotation (write_outputs.py path)
-│   │   ├── journal_entry_tab.py    # Journal Entry tab builder
-│   │   ├── snapshot_tabs.py        # PDF snapshot tabs (optional, needs poppler)
-│   │   ├── document_renamer.py     # FF-numbered document copies
-│   │   ├── json_writer.py          # index.json output
-│   │   └── styles.py               # Shared Excel styles
-│   │
-│   └── utils/                      # Shared utilities
-│       ├── claude_client.py        # Anthropic API wrapper (retry, JSON extraction)
-│       ├── logging_utils.py        # Structured JSON run logger
-│       └── amount_utils.py         # Amount parsing/formatting
+│   └── output/                     # Output modules (used by write_outputs.py)
+│       ├── workpaper_annotator.py  # Annotate client Excel with audit columns
+│       ├── journal_entry_tab.py    # Journal Entry tab builder
+│       ├── snapshot_tabs.py        # PDF snapshot tabs (optional, needs poppler)
+│       └── styles.py               # Shared Excel styles
 │
 ├── .claude/
 │   └── commands/
@@ -196,17 +169,11 @@ Creates `deals/<slug>/` with the folder structure and an optional blank funds fl
 
 ## How matching works
 
-The indexer uses a two-phase matching approach:
+Claude Code reads the extracted line items and document text, then matches them using in-context reasoning:
 
-**Phase 1 — Pre-filter** (`matcher/scoring.py`): Narrows candidates using deterministic scoring:
-1. **Amount proximity** — document amount within 20% of the line item total
-2. **Vendor overlap** — Jaccard token similarity on vendor names (min 15% threshold)
-3. Falls back to top 10 candidates when pre-filter finds nothing
-
-**Phase 2 — LLM reasoning** (`matcher/llm_matcher.py`): Claude evaluates the shortlisted candidates using:
 1. **Reference match** — document text contains a reference number from the line item's notes
 2. **Vendor match** — document text contains the vendor name from the line item description
-3. **Amount match** — document total agrees with the line item amount
+3. **Amount match** — document total agrees with the line item amount (within ±5%)
 
 Edge cases handled automatically:
 - **Cumulative billing** — when a later invoice supersedes an earlier one (e.g. $280K interim → $700K cumulative), both FF lines are linked
