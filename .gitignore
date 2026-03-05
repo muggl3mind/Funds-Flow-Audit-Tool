@@ -1,0 +1,32 @@
+# Environment & secrets
+.env
+.env.*
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS
+.DS_Store
+
+# Deal data — contains real client documents, never commit
+deals/*
+!deals/.gitkeep
+
+# Staging area — real client files land here before processing
+input/*
+!input/.gitkeep
+
+# Session state
+last_run.json
+
+# Claude Code local settings (user-specific permissions)
+.claude/settings.local.json
+
+# Excel temp/lock files
+~$*.xlsx
+
+# Archive — demo data generators, not needed for production use
+archive/
