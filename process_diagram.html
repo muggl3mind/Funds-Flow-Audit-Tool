@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Funds Flow Indexer — Process Diagram</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Calibri", "Segoe UI", Arial, sans-serif;
+      background: #f4f7fb;
+      color: #1a2a3a;
+      padding: 40px 32px 60px;
+    }
+
+    header {
+      background: #1F3864;
+      color: #fff;
+      border-radius: 10px;
+      padding: 28px 36px;
+      margin-bottom: 36px;
+      display: flex;
+      align-items: flex-start;
+      gap: 24px;
+    }
+    header .logo { font-size: 2.4rem; line-height: 1; }
+    header h1   { font-size: 1.55rem; font-weight: 700; margin-bottom: 6px; }
+    header p    { font-size: 0.92rem; opacity: 0.8; line-height: 1.5; }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #fff;
+      border: 1px solid #dde3ec;
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-size: 0.86rem;
+      font-weight: 600;
+    }
+    .legend-dot {
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .diagram-card {
+      background: #fff;
+      border: 1px solid #dde3ec;
+      border-radius: 10px;
+      padding: 32px 24px;
+      overflow-x: auto;
+    }
+
+    .mermaid { min-width: 760px; }
+
+    footer {
+      margin-top: 32px;
+      font-size: 0.8rem;
+      color: #8a9ab0;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">📊</div>
+  <div>
+    <h1>Funds Flow Indexer — Process Diagram</h1>
+    <p>
+      End-to-end pipeline: from client PBC and support documents to a fully annotated
+      audit workpaper with renamed, FF-numbered document files.
+    </p>
+  </div>
+</header>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#1F3864"></div>Client inputs</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#2E4057"></div>Agent stages</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#375623"></div>MATCHED — doc on file, amount agrees</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#7D6608"></div>PARTIAL — doc found, amount short</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#7D3400"></div>CUMULATIVE — multi-invoice, combined total agrees</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#C00000"></div>MISSING — no document provided</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#888"></div>UNMATCHED — doc in folder, not tied to FF line</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#344E6B"></div>Outputs</div>
+</div>
+
+<div class="diagram-card">
+  <div class="mermaid">
+flowchart TD
+
+  %% ── Styles ────────────────────────────────────────────────────────────────
+  classDef input     fill:#1F3864,color:#fff,stroke:#1F3864,rx:6
+  classDef stage     fill:#2E4057,color:#fff,stroke:#2E4057,rx:6
+  classDef substage  fill:#344E6B,color:#fff,stroke:#344E6B,rx:4
+  classDef matched   fill:#E2EFDA,color:#375623,stroke:#375623,rx:4
+  classDef partial   fill:#FFF2CC,color:#7D6608,stroke:#b8950a,rx:4
+  classDef cumul     fill:#FCE8D9,color:#7D3400,stroke:#d4845a,rx:4
+  classDef missing   fill:#FCE4D6,color:#C00000,stroke:#C00000,rx:4
+  classDef unmatched fill:#F2F2F2,color:#555,stroke:#999,rx:4
+  classDef output    fill:#D6E4F0,color:#1F3864,stroke:#344E6B,rx:6
+  classDef outputhl  fill:#1F3864,color:#fff,stroke:#1F3864,rx:6
+
+  %% ── INPUTS ────────────────────────────────────────────────────────────────
+  subgraph INPUTS["📥  CLIENT INPUTS"]
+    direction LR
+    FF["📊 funds_flow.xlsx
+    ─────────────────────
+    Sources &amp; Uses tab
+    Buyer Expenses tab
+    Seller Expenses tab
+    Wire Instructions tab
+    Excel formulas preserved"]:::input
+
+    DOCS["📁 documents/
+    ─────────────────────
+    Formal invoices · PDF
+    Email invoices · PDF
+    Government receipts
+    Internal summaries"]:::input
+  end
+
+  %% ── STAGE 1 ───────────────────────────────────────────────────────────────
+  S1["🔍  Stage 1 · Parse Excel
+  ─────────────────────────
+  excel_parser.py
+  Reads all sheets + cell values
+  Preserves formulas &amp; structure
+  Detects merged cells and headers"]:::stage
+
+  %% ── STAGE 2 ───────────────────────────────────────────────────────────────
+  subgraph S2["  Stage 2 · Scope Detection &amp; Line Item Extraction"]
+    direction TB
+    S2A["2a · Tab Scope Detection
+    ──────────────────────────────
+    funds_flow_normalizer.py + LLM
+    Classifies each tab:
+    ✓ IN SCOPE  — expense detail tabs
+    ✗ SKIP      — summary, wire, seller tabs"]:::substage
+
+    S2B["2b · Line Item Extraction
+    ──────────────────────────────
+    funds_flow_normalizer.py + LLM
+    Per line item extracts:
+    · Description · Vendor hint
+    · Fund I / Fund II amounts
+    · Total amount · Source row ref"]:::substage
+
+    S2A --> S2B
+  end
+
+  %% ── STAGE 3 ───────────────────────────────────────────────────────────────
+  S3["📄  Stage 3 · Load &amp; Parse Documents
+  ─────────────────────────────────────
+  document_normalizer.py  (parallel)
+  pdf_parser + email_parser
+  LLM extracts per document:
+  · Vendor name · Invoice number
+  · Invoice date · Total amount
+  · Line item breakdown
+  Results cached to documents_cache.json"]:::stage
+
+  %% ── STAGE 4 ───────────────────────────────────────────────────────────────
+  S4["🤖  Stage 4 · Matching &amp; GL Classification
+  ────────────────────────────────
+  Claude matches each line item to docs:
+  1  Reference, vendor &amp; amount matching
+  2  Cumulative billing detected
+  3  Partial support identified
+  4  GL account assigned from
+     chart_of_accounts.json
+  5  Duplicate assignments flagged"]:::stage
+
+  %% ── STAGE 5 ───────────────────────────────────────────────────────────────
+  subgraph S5["  Stage 5 · Exception Classification"]
+    direction LR
+    E1["✓  MATCHED
+    Doc on file
+    Amount agrees"]:::matched
+
+    E2["~  PARTIAL
+    Doc found
+    Amount short
+    e.g. HSR: $35K of $45K"]:::partial
+
+    E3["⟳  CUMULATIVE
+    Same vendor
+    Multi-invoice
+    Combined total agrees
+    e.g. H&amp;C: $280K + $420K"]:::cumul
+
+    E4["✗  MISSING
+    No document
+    provided
+    e.g. Vertex · Nexus"]:::missing
+
+    E5["↩  UNMATCHED
+    Doc in folder
+    not tied to
+    any FF line"]:::unmatched
+  end
+
+  %% ── STAGE 6c ──────────────────────────────────────────────────────────────
+  S6C["📋  Stage 6c · Rename &amp; Index Documents
+  ────────────────────────────────────────
+  document_renamer.py  ← runs every time
+  Matched docs copied and renamed:
+  FF01 - Harrington &amp; Cross - HC-2026-04211.pdf
+  FF02 - Harrington &amp; Cross - HC-2026-07089.pdf
+  FF03 - Meridian Advisory - MA-2026-04417.pdf  ...
+  Unmatched docs → UNMATCHED/ subfolder"]:::stage
+
+  %% ── STAGE 6 ───────────────────────────────────────────────────────────────
+  S6["✍️  Stage 6 · Write Outputs
+  ─────────────────────────────
+  excel_writer.py + json_writer.py"]:::stage
+
+  %% ── OUTPUTS ───────────────────────────────────────────────────────────────
+  subgraph OUTPUTS["📤  OUTPUTS  (run_output/)"]
+    direction LR
+    O1["📋 index.json
+    Full structured index
+    All match results
+    Exception log
+    Summary stats"]:::output
+
+    O2["📊 funds_flow_indexed.xlsx
+    ──────────────────────────────
+    Client workpaper annotated:
+    · Audit columns per line
+      Support Doc · Amount
+      Agrees? · GL Account
+      Exception · Note
+    · Invoice snapshot tabs
+    · Journal Entry tab
+    · Audit Summary sheet"]:::outputhl
+
+    O3["📁 documents_indexed/
+    ──────────────────────────────
+    FF-numbered copies of
+    all matched documents
+    UNMATCHED/ for orphan docs"]:::output
+
+    O4["📝 run.log
+    Full audit trail
+    of every stage
+    and decision"]:::output
+  end
+
+  %% ── CONNECTIONS ───────────────────────────────────────────────────────────
+  FF   --> S1
+  DOCS --> S3
+  S1   --> S2A
+  S2B  --> S4
+  S3   --> S4
+  S4   --> S5
+  S5   --> S6C
+  S6C  --> S6
+  S6   --> O1
+  S6   --> O2
+  S6C  --> O3
+  S6   --> O4
+
+  </div>
+</div>
+
+<footer>
+  Funds Flow Indexer · Apex Capital Partners · Project Meridian demo
+</footer>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: "default",
+    flowchart: {
+      curve: "basis",
+      padding: 20,
+      nodeSpacing: 40,
+      rankSpacing: 52,
+    },
+    themeVariables: {
+      fontFamily: "Calibri, Segoe UI, Arial, sans-serif",
+      fontSize: "13px",
+      primaryColor:       "#2E4057",
+      primaryTextColor:   "#ffffff",
+      primaryBorderColor: "#1F3864",
+      lineColor:          "#5a7fa8",
+      secondaryColor:     "#D6E4F0",
+      tertiaryColor:      "#f4f7fb",
+    },
+  });
+</script>
+</body>
+</html>

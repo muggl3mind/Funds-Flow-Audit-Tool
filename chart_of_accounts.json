@@ -1,0 +1,34 @@
+{
+  "_instructions": "This is a reference chart of accounts for the Funds Flow Indexer. The LLM reads this file during the matching step and uses judgment to classify each line item to the most appropriate account — no keyword rules. Edit codes and names to match your firm's general ledger. Add or remove accounts as needed.",
+
+  "transaction_cost_accounts": [
+    { "code": "7010", "name": "Transaction Costs — Legal Fees" },
+    { "code": "7020", "name": "Transaction Costs — Banking & Advisory Fees" },
+    { "code": "7030", "name": "Transaction Costs — Financial Due Diligence" },
+    { "code": "7040", "name": "Transaction Costs — Commercial Due Diligence" },
+    { "code": "7050", "name": "Transaction Costs — Technology Due Diligence" },
+    { "code": "7060", "name": "Transaction Costs — Environmental Due Diligence" },
+    { "code": "7070", "name": "Transaction Costs — Operational Due Diligence" },
+    { "code": "7080", "name": "Transaction Costs — Tax Advisory" },
+    { "code": "7090", "name": "Transaction Costs — Regulatory & Filing Fees" },
+    { "code": "7100", "name": "Transaction Costs — Insurance & R&W" },
+    { "code": "7110", "name": "Transaction Costs — Travel & Expenses" },
+    { "code": "7120", "name": "Transaction Costs — Miscellaneous Closing Costs" }
+  ],
+
+  "investment_accounts": [
+    { "code": "1500", "name": "Investment in Portfolio Companies" },
+    { "code": "1510", "name": "Investment — Purchase Price Adjustment" }
+  ],
+
+  "credit_accounts": {
+    "wire_payable": {
+      "code": "2100",
+      "name": "Wire Payable"
+    },
+    "accrued_liabilities": {
+      "code": "2200",
+      "name": "Accrued Liabilities — Deal Costs"
+    }
+  }
+}
