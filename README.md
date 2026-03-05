@@ -20,12 +20,13 @@ Built to run inside [Claude Code](https://docs.anthropic.com/en/docs/claude-code
 
 For each line item in the funds flow, the indexer:
 
-1. **Extracts** line items from the Excel (vendor, amount, fund allocation)
-2. **Parses** every PDF in the documents folder (invoices, receipts, emails)
-3. **Matches** documents to line items by vendor name, reference number, and amount
-4. **Classifies** each line item to a GL account using `chart_of_accounts.json`
-5. **Writes** an annotated Excel workpaper with an index column and PDF snapshots
-6. **Renames** matched documents with FF-numbered prefixes for clean filing
+1. **Parses** the Excel workbook and detects which tabs are in scope (skips seller/wire/summary)
+2. **Extracts** line items from each in-scope tab (vendor, amount, fund allocation) via LLM
+3. **Parses** every PDF in the documents folder and extracts billing details (vendor, invoice number, date, amounts) via LLM with caching
+4. **Matches** documents to line items using pre-filtering (amount + vendor overlap) then LLM reasoning, and assigns GL accounts from `chart_of_accounts.json`
+5. **Classifies** exceptions — missing docs, partial support, amount mismatches, orphan docs
+6. **Writes** an annotated Excel workpaper with audit columns, an Audit Summary sheet, and PDF snapshots
+7. **Renames** matched documents with FF-numbered prefixes for clean filing
 
 ### Match statuses
 
@@ -66,7 +67,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-For PDF snapshot tabs in the annotated Excel (optional):
+For PDF snapshot tabs in the annotated Excel (optional — `output/snapshot_tabs.py` skips gracefully if missing):
 ```bash
 brew install poppler    # macOS — required by pdf2image
 ```
@@ -101,30 +102,55 @@ python new_deal.py --deal "Acme Acquisition" --closing-date 2026-07-15 --client-
 
 ```
 funds-flow-indexer/
-├── run.py                     # Staging: input/ → deals/<slug>/
-├── new_deal.py                # Scaffold empty deal folders
-├── chart_of_accounts.json     # GL account reference for classification
+├── run.py                          # Staging: input/ → deals/<slug>/
+├── new_deal.py                     # Scaffold empty deal folders
+├── chart_of_accounts.json          # GL account reference for classification
 ├── requirements.txt
-├── process_diagram.html       # Visual pipeline diagram (open in browser)
+├── process_diagram.html            # Visual pipeline diagram (open in browser)
 │
-├── agent/                     # Core pipeline modules
-│   ├── extract_funds_flow.py  # Step 1: Parse Excel line items
-│   ├── extract_documents.py   # Step 2: Extract text from PDFs
-│   ├── write_outputs.py       # Step 5: Write Excel, JE tab + rename docs
-│   ├── main.py                # Full agent pipeline
-│   ├── config.py
-│   └── output/
-│       ├── excel_writer.py    # Annotate client Excel
-│       ├── document_renamer.py# FF-numbered document copies
-│       └── json_writer.py     # index.json output
+├── agent/                          # Core pipeline
+│   ├── main.py                     # Full agent pipeline (Stages 1-7)
+│   ├── config.py                   # DealConfig dataclass
+│   ├── write_outputs.py            # Standalone orchestrator (index.json → outputs)
+│   │
+│   ├── parsers/                    # Stage 1 + 3: Raw text extraction
+│   │   ├── excel_parser.py         # Parse Excel sheets into raw cell data
+│   │   ├── pdf_parser.py           # Extract text from PDFs
+│   │   └── email_parser.py         # Parse email-style PDF documents
+│   │
+│   ├── normalizers/                # Stages 2-3: LLM-driven normalization
+│   │   ├── funds_flow_normalizer.py# Tab scope detection + line item extraction
+│   │   └── document_normalizer.py  # Document billing extraction (parallel, cached)
+│   │
+│   ├── matcher/                    # Stage 4: Matching
+│   │   ├── llm_matcher.py          # LLM-driven matching + GL classification
+│   │   └── scoring.py              # Deterministic confidence scoring
+│   │
+│   ├── exceptions/                 # Stage 5: Post-match analysis
+│   │   └── exception_classifier.py # Exception classification
+│   │
+│   ├── output/                     # Stage 6: Deliverables
+│   │   ├── excel_writer.py         # Annotate client Excel with audit columns
+│   │   ├── audit_summary.py        # Audit Summary sheet (scoreboard + exceptions)
+│   │   ├── workpaper_annotator.py  # Workpaper annotation (write_outputs.py path)
+│   │   ├── journal_entry_tab.py    # Journal Entry tab builder
+│   │   ├── snapshot_tabs.py        # PDF snapshot tabs (optional, needs poppler)
+│   │   ├── document_renamer.py     # FF-numbered document copies
+│   │   ├── json_writer.py          # index.json output
+│   │   └── styles.py               # Shared Excel styles
+│   │
+│   └── utils/                      # Shared utilities
+│       ├── claude_client.py        # Anthropic API wrapper (retry, JSON extraction)
+│       ├── logging_utils.py        # Structured JSON run logger
+│       └── amount_utils.py         # Amount parsing/formatting
 │
 ├── .claude/
 │   └── commands/
-│       └── index-funds-flow.md  # Claude Code skill definition
+│       └── index-funds-flow.md     # Claude Code skill definition
 │
-├── input/                     # Drop files here to index
-├── deals/                     # Indexed deals (one folder per deal)
-└── Sample data/               # Pre-built demo files
+├── input/                          # Drop files here to index
+├── deals/                          # Indexed deals (one folder per deal)
+└── Sample data/                    # Pre-built demo files
 ```
 
 ## Try it out
@@ -170,11 +196,17 @@ Creates `deals/<slug>/` with the folder structure and an optional blank funds fl
 
 ## How matching works
 
-The indexer matches documents to line items using three signals:
+The indexer uses a two-phase matching approach:
 
+**Phase 1 — Pre-filter** (`matcher/scoring.py`): Narrows candidates using deterministic scoring:
+1. **Amount proximity** — document amount within 20% of the line item total
+2. **Vendor overlap** — Jaccard token similarity on vendor names (min 15% threshold)
+3. Falls back to top 10 candidates when pre-filter finds nothing
+
+**Phase 2 — LLM reasoning** (`matcher/llm_matcher.py`): Claude evaluates the shortlisted candidates using:
 1. **Reference match** — document text contains a reference number from the line item's notes
 2. **Vendor match** — document text contains the vendor name from the line item description
-3. **Amount match** — document text mentions an amount within +/-5% of the line item total
+3. **Amount match** — document total agrees with the line item amount
 
 Edge cases handled automatically:
 - **Cumulative billing** — when a later invoice supersedes an earlier one (e.g. $280K interim → $700K cumulative), both FF lines are linked

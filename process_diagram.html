@@ -132,7 +132,7 @@ flowchart TD
   %% ── STAGE 1 ───────────────────────────────────────────────────────────────
   S1["🔍  Stage 1 · Parse Excel
   ─────────────────────────
-  excel_parser.py
+  parsers/excel_parser.py
   Reads all sheets + cell values
   Preserves formulas &amp; structure
   Detects merged cells and headers"]:::stage
@@ -142,15 +142,15 @@ flowchart TD
     direction TB
     S2A["2a · Tab Scope Detection
     ──────────────────────────────
-    funds_flow_normalizer.py + LLM
-    Classifies each tab:
+    normalizers/funds_flow_normalizer.py
+    Rule-based + LLM fallback
     ✓ IN SCOPE  — expense detail tabs
     ✗ SKIP      — summary, wire, seller tabs"]:::substage
 
     S2B["2b · Line Item Extraction
     ──────────────────────────────
-    funds_flow_normalizer.py + LLM
-    Per line item extracts:
+    normalizers/funds_flow_normalizer.py
+    LLM extracts per line item:
     · Description · Vendor hint
     · Fund I / Fund II amounts
     · Total amount · Source row ref"]:::substage
@@ -161,27 +161,27 @@ flowchart TD
   %% ── STAGE 3 ───────────────────────────────────────────────────────────────
   S3["📄  Stage 3 · Load &amp; Parse Documents
   ─────────────────────────────────────
-  document_normalizer.py  (parallel)
-  pdf_parser + email_parser
+  normalizers/document_normalizer.py
+  parsers/pdf_parser + email_parser
   LLM extracts per document:
   · Vendor name · Invoice number
   · Invoice date · Total amount
   · Line item breakdown
-  Results cached to documents_cache.json"]:::stage
+  Cached → documents_cache.json"]:::stage
 
   %% ── STAGE 4 ───────────────────────────────────────────────────────────────
   S4["🤖  Stage 4 · Matching &amp; GL Classification
   ────────────────────────────────
-  Claude matches each line item to docs:
-  1  Reference, vendor &amp; amount matching
-  2  Cumulative billing detected
-  3  Partial support identified
-  4  GL account assigned from
-     chart_of_accounts.json
+  matcher/llm_matcher.py
+  Pre-filter: matcher/scoring.py
+  1  Amount proximity + vendor overlap
+  2  LLM reasons over candidates
+  3  Cumulative billing detected
+  4  GL account from chart_of_accounts
   5  Duplicate assignments flagged"]:::stage
 
   %% ── STAGE 5 ───────────────────────────────────────────────────────────────
-  subgraph S5["  Stage 5 · Exception Classification"]
+  subgraph S5["  Stage 5 · Exception Classification  (exceptions/exception_classifier.py)"]
     direction LR
     E1["✓  MATCHED
     Doc on file
@@ -212,7 +212,7 @@ flowchart TD
   %% ── STAGE 6c ──────────────────────────────────────────────────────────────
   S6C["📋  Stage 6c · Rename &amp; Index Documents
   ────────────────────────────────────────
-  document_renamer.py  ← runs every time
+  output/document_renamer.py  ← runs every time
   Matched docs copied and renamed:
   FF01 - Harrington &amp; Cross - HC-2026-04211.pdf
   FF02 - Harrington &amp; Cross - HC-2026-07089.pdf
@@ -222,7 +222,10 @@ flowchart TD
   %% ── STAGE 6 ───────────────────────────────────────────────────────────────
   S6["✍️  Stage 6 · Write Outputs
   ─────────────────────────────
-  excel_writer.py + json_writer.py"]:::stage
+  output/excel_writer.py — audit columns
+  output/audit_summary.py — scoreboard
+  output/json_writer.py — index.json
+  output/snapshot_tabs.py — PDF previews"]:::stage
 
   %% ── OUTPUTS ───────────────────────────────────────────────────────────────
   subgraph OUTPUTS["📤  OUTPUTS  (run_output/)"]
