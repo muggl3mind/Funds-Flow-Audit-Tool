@@ -15,7 +15,7 @@ Built to run inside [Claude Code](https://docs.anthropic.com/en/docs/claude-code
                                     │   ├── FF02 - Vendor - INV-002.pdf
                                     │   └── UNMATCHED/
                                     │       └── orphan_doc.pdf
-                                    └── journal_entry.xlsx        (if generated)
+                                    └── (JE tab included in workpaper)
 ```
 
 For each line item in the funds flow, the indexer:
@@ -110,8 +110,7 @@ funds-flow-indexer/
 ├── agent/                     # Core pipeline modules
 │   ├── extract_funds_flow.py  # Step 1: Parse Excel line items
 │   ├── extract_documents.py   # Step 2: Extract text from PDFs
-│   ├── write_outputs.py       # Step 5: Write Excel + rename docs
-│   ├── write_journal_entry.py # Journal entry generation
+│   ├── write_outputs.py       # Step 5: Write Excel, JE tab + rename docs
 │   ├── main.py                # Full agent pipeline
 │   ├── config.py
 │   └── output/
