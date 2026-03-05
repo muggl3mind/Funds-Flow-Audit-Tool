@@ -20,6 +20,9 @@ class DealConfig:
     output_dir: Path
     fund_allocations: dict[str, float] = field(default_factory=dict)  # {"Fund I": 0.60}
     match_confidence_threshold: float = 0.75
+    prefilter_amount_window: float = 0.20     # doc within 20% of ff amount
+    prefilter_vendor_min: float = 0.15        # Jaccard token overlap threshold
+    prefilter_fallback_cap: int = 10          # max candidates when pre-filter finds nothing
     anthropic_model: str = "claude-opus-4-6"
     anthropic_api_key: str = field(default_factory=lambda: os.environ.get("ANTHROPIC_API_KEY", ""))
     agent_version: str = "1.0.0"

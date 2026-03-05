@@ -9,6 +9,7 @@ For each line item:
 """
 from __future__ import annotations
 
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from typing import Optional
@@ -26,8 +27,8 @@ from agent.utils.amount_utils import format_usd
 from agent.utils.claude_client import ClaudeClient
 from agent.utils.logging_utils import RunLogger
 
-AMOUNT_WINDOW = 0.20   # pre-filter: doc within 20% of ff amount (or no ff amount)
-VENDOR_MIN    = 0.15   # pre-filter: Jaccard token overlap threshold
+AMOUNT_WINDOW = 0.20   # default; overridden by config.prefilter_amount_window
+VENDOR_MIN    = 0.15   # default; overridden by config.prefilter_vendor_min
 
 
 def build_cumulative_map(documents: list[DocumentRecord]) -> dict[str, list[DocumentRecord]]:
@@ -48,8 +49,7 @@ def build_cumulative_map(documents: list[DocumentRecord]) -> dict[str, list[Docu
 
 def _normalise_vendor(name: str) -> str:
     """Lowercase + strip punctuation for grouping purposes."""
-    import re
-    return re.sub(r"[^a-z0-9 ]", " ", name.lower()).split()[0:3].__str__()
+    return " ".join(re.sub(r"[^a-z0-9 ]", " ", name.lower()).split()[:3])
 
 
 @dataclass
@@ -125,7 +125,7 @@ def _match_one(
     logger: RunLogger,
 ) -> MatchResult:
 
-    candidates = _prefilter(item, documents)
+    candidates = _prefilter(item, documents, config)
     if not candidates:
         logger.info(f"  No candidates for '{item.description}' — marking missing", stage="4")
         return _unmatched(item, "No candidate documents passed pre-filter")
@@ -231,10 +231,15 @@ Exception flag codes (include any that apply):
     )
 
 
-def _prefilter(item: FundsFlowLineItem, documents: list[DocumentRecord]) -> list[DocumentRecord]:
+def _prefilter(item: FundsFlowLineItem, documents: list[DocumentRecord],
+               config: DealConfig | None = None) -> list[DocumentRecord]:
     """Return candidate documents that pass amount or vendor proximity filters."""
     if not documents:
         return []
+
+    amount_window = config.prefilter_amount_window if config else AMOUNT_WINDOW
+    vendor_min = config.prefilter_vendor_min if config else VENDOR_MIN
+    fallback_cap = config.prefilter_fallback_cap if config else 10
 
     candidates = []
     for doc in documents:
@@ -243,19 +248,19 @@ def _prefilter(item: FundsFlowLineItem, documents: list[DocumentRecord]) -> list
 
         if item.total_amount is not None and doc.total_amount is not None:
             pct = abs(item.total_amount - doc.total_amount) / max(abs(item.total_amount), 1)
-            amount_ok = pct <= AMOUNT_WINDOW
+            amount_ok = pct <= amount_window
         elif item.total_amount is None or doc.total_amount is None:
             amount_ok = True   # can't eliminate on amount alone if either is missing
 
         if item.vendor_hint and doc.vendor_name:
-            vendor_ok = _vendor_similarity(item.vendor_hint, doc.vendor_name) >= VENDOR_MIN
+            vendor_ok = _vendor_similarity(item.vendor_hint, doc.vendor_name) >= vendor_min
 
         if amount_ok or vendor_ok:
             candidates.append(doc)
 
     # If pre-filter is too aggressive (e.g. small deal), fall back to all docs
     if not candidates:
-        candidates = documents[:10]   # cap at 10 to keep prompt manageable
+        candidates = documents[:fallback_cap]
 
     return candidates
 
