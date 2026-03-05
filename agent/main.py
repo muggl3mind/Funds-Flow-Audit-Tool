@@ -1,5 +1,5 @@
 """
-Funds Flow Indexer — Production Agent
+Funds Flow Audit Tool — Production Agent
 ======================================
 Usage:
   python -m agent.main \\
@@ -196,7 +196,7 @@ def _print_summary(results, exceptions, summary, elapsed):
 
 
 def _parse_args():
-    p = argparse.ArgumentParser(description="Funds Flow Indexer — Production Agent")
+    p = argparse.ArgumentParser(description="Funds Flow Audit Tool — Production Agent")
     p.add_argument("--deal",         required=True,  help="Deal name")
     p.add_argument("--closing-date", required=True,  help="YYYY-MM-DD")
     p.add_argument("--client-role",  required=True,  choices=["buyer", "seller", "both"])

@@ -1,5 +1,5 @@
 """
-run.py — Funds Flow Indexer
+run.py — Funds Flow Audit Tool
 
 1. Drop your funds flow Excel (.xlsx) and support documents (.pdf) into input/
 2. Run:  python run.py
@@ -129,7 +129,7 @@ def main():
 
     if not meta["deal_name"]:
         print("ERROR: Could not read deal name from the Excel header (row 2, column 2).")
-        print("       Make sure the Excel uses the Funds Flow Indexer template.")
+        print("       Make sure the Excel uses the Funds Flow Audit Tool template.")
         sys.exit(1)
 
     pdf_count = len(list(INPUT_DIR.glob("*.pdf")))

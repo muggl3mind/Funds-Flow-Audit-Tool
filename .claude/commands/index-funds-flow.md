@@ -1,4 +1,4 @@
-# Funds Flow Indexer
+# Funds Flow Audit Tool
 
 See `~/.claude/commands/index-funds-flow.md` for the full skill definition.
 

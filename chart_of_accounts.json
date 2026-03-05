@@ -1,5 +1,5 @@
 {
-  "_instructions": "This is a reference chart of accounts for the Funds Flow Indexer. The LLM reads this file during the matching step and uses judgment to classify each line item to the most appropriate account — no keyword rules. Edit codes and names to match your firm's general ledger. Add or remove accounts as needed.",
+  "_instructions": "This is a reference chart of accounts for the Funds Flow Audit Tool. The LLM reads this file during the matching step and uses judgment to classify each line item to the most appropriate account — no keyword rules. Edit codes and names to match your firm's general ledger. Add or remove accounts as needed.",
 
   "transaction_cost_accounts": [
     { "code": "7010", "name": "Transaction Costs — Legal Fees" },

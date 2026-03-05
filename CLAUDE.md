@@ -1,4 +1,4 @@
-# Funds Flow Indexer
+# Funds Flow Audit Tool
 
 PE deal audit tool: given a client funds flow Excel + folder of support PDFs, automatically match every cost line item to its support doc, annotate the workpaper in place (auditor-style), rename docs with FF-numbered references, and produce clean deliverables.
 
