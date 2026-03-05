@@ -8,30 +8,15 @@ PE deal audit tool: given a client funds flow Excel + folder of support PDFs, au
 |------|------|
 | `run.py` | Staging script — moves files from `input/` to `deals/<slug>/` |
 | `new_deal.py` | Scaffold a new deal folder: `python new_deal.py --deal "Name" --closing-date YYYY-MM-DD --client-role buyer [--template]` |
-| `agent/main.py` | Full production agent pipeline (Stages 1-7) |
-| `agent/config.py` | `DealConfig` dataclass — all deal parameters |
-| `agent/parsers/excel_parser.py` | Stage 1 — parse Excel sheets into raw cell data |
-| `agent/parsers/pdf_parser.py` | Raw PDF text extraction |
-| `agent/parsers/email_parser.py` | Email/PDF document text parsing |
-| `agent/normalizers/funds_flow_normalizer.py` | Stage 2 — tab scope detection + line item extraction |
-| `agent/normalizers/document_normalizer.py` | Stage 3 — LLM-driven document normalization (parallel, cached) |
-| `agent/matcher/llm_matcher.py` | Stage 4 — LLM-driven matching + GL classification |
-| `agent/matcher/scoring.py` | Deterministic confidence scoring (no LLM) |
-| `agent/exceptions/exception_classifier.py` | Stage 5 — post-match exception classification |
-| `agent/output/excel_writer.py` | Stage 6 — annotates client Excel with audit columns |
-| `agent/output/audit_summary.py` | Audit Summary sheet (scoreboard + exceptions) |
-| `agent/output/json_writer.py` | `index.json` output |
-| `agent/output/document_renamer.py` | Stage 6c — renames + indexes docs |
-| `agent/output/styles.py` | Shared Excel styles for all output modules |
-| `agent/write_outputs.py` | Standalone orchestrator — reads `index.json`, delegates to sub-modules |
-| `agent/output/workpaper_annotator.py` | Workpaper annotation (used by `write_outputs.py`) |
+| `agent/extract_funds_flow.py` | Parse Excel — extract line items from in-scope tabs |
+| `agent/extract_documents.py` | Parse PDFs — extract text from all support documents |
+| `agent/write_outputs.py` | Output orchestrator — reads `index.json`, delegates to sub-modules |
+| `agent/output/workpaper_annotator.py` | Annotate client Excel with audit columns |
 | `agent/output/journal_entry_tab.py` | Journal Entry tab builder |
 | `agent/output/snapshot_tabs.py` | PDF snapshot tabs (optional, requires poppler) |
-| `agent/utils/claude_client.py` | Anthropic API wrapper (retry, JSON extraction) |
-| `agent/utils/logging_utils.py` | Structured JSON run logger |
-| `agent/utils/amount_utils.py` | Amount parsing/formatting utilities |
+| `agent/output/styles.py` | Shared Excel styles for all output modules |
 | `chart_of_accounts.json` | Reference GL accounts for line item classification |
-| `.claude/commands/index-funds-flow.md` | Claude Code command for `/index-funds-flow` |
+| `.claude/commands/index-funds-flow.md` | Claude Code skill for `/index-funds-flow` |
 
 ## Running
 
@@ -51,19 +36,16 @@ python new_deal.py --deal "Deal Name" --closing-date YYYY-MM-DD --client-role bu
 # Creates deals/<slug>/{documents/, run_output/, README.txt, [funds_flow_template.xlsx]}
 ```
 
-## Agent Pipeline (Stages)
+## Skill Pipeline (`/index-funds-flow`)
 
-1. **Parse Excel** — `parsers/excel_parser.py` reads all sheets + cell values
-2. **Scope & Extraction** — `normalizers/funds_flow_normalizer.py`
-   - 2a: Tab scope detection (rule-based + LLM fallback)
-   - 2b: Line item extraction (LLM)
-3. **Document Parsing** — `normalizers/document_normalizer.py` (parallel, cached via `documents_cache.json`)
-   - Uses `parsers/pdf_parser.py` + `parsers/email_parser.py` for text extraction
-   - LLM extracts vendor, invoice number, date, amounts per document
-4. **Matching** — `matcher/llm_matcher.py` pre-filters candidates via `matcher/scoring.py`, then LLM picks best match + assigns GL account
-5. **Exception Classification** — `exceptions/exception_classifier.py`
-6. **Write Outputs** — `output/excel_writer.py` (audit columns) + `output/audit_summary.py` + `output/json_writer.py`
-6c. **Rename & Index Docs** — `output/document_renamer.py` — runs every time automatically
+The entire pipeline runs inside Claude Code via the `/index-funds-flow` skill:
+
+1. **Stage** — `run.py` moves files from `input/` to `deals/<slug>/`
+2. **Parse Excel** — `extract_funds_flow.py` extracts line items from in-scope tabs
+3. **Parse Documents** — `extract_documents.py` extracts text from all PDFs
+4. **Match & Classify** — Claude Code matches line items to documents and assigns GL accounts (in-context reasoning, no external API calls)
+5. **Write `index.json`** — Claude Code writes the structured index
+6. **Write Outputs** — `write_outputs.py` generates the annotated workpaper, JE tab, snapshots, and FF-numbered document copies
 7. **Print Summary** — console results table
 
 ## Matching Rules
