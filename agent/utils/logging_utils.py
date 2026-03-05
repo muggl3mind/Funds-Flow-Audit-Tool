@@ -39,6 +39,8 @@ class RunLogger:
     def warn(self, msg: str, stage: str = "", **kwargs):
         self._write({"level": "WARN", "stage": stage, "msg": msg, **kwargs})
 
+    warning = warn  # alias for compatibility
+
     def error(self, msg: str, stage: str = "", **kwargs):
         self._write({"level": "ERROR", "stage": stage, "msg": msg, **kwargs})
 
