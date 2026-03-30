@@ -2,15 +2,15 @@
 Generate sample invoice PDFs and email PDFs for the Funds Flow Audit Tool demo.
 
 Documents created (7 of 10 line items — INV-004, INV-006, INV-007 intentionally omitted):
-  INV-001  Legal Counsel - Harper & Whitfield LLP          $750,000
-  INV-002  Accounting & Audit Fees - Ashford LLP        $250,000
-  INV-003  Banking Advisory - Meridian Securities       $1,500,000
-  INV-004  Due Diligence - Pinnacle Advisory Group                $300,000  ← MISSING (no file)
-  INV-005  Environmental Assessment - Greenleaf Consulting           $75,000
-  INV-006  Tax Advisory - Sterling & Associates LLP     $150,000  ← MISSING (no file)
+  INV-001  Legal Counsel - Harper & Whitfield LLP         $750,000
+  INV-002  Accounting & Audit Fees - Ashford LLP         $250,000
+  INV-003  Banking Advisory - Meridian Securities LLC  $1,500,000
+  INV-004  Due Diligence - Pinnacle Advisory Group       $300,000  ← MISSING (no file)
+  INV-005  Environmental Assessment - Greenleaf Consulting $75,000
+  INV-006  Tax Advisory - Sterling & Associates LLP      $150,000  ← MISSING (no file)
   INV-007  Regulatory Filing Fees - HSR/SEC               $30,000  ← MISSING (no file)
   INV-008  Miscellaneous Closing Costs                    $15,000
-  EMAIL-001 IT Due Diligence - Crossbridge Partners           $85,000
+  EMAIL-001 IT Due Diligence - Crossbridge Partners        $85,000
   EMAIL-002 Travel & Expenses - Various                   $45,000
 """
 
@@ -61,7 +61,7 @@ def footer_note(pdf: FPDF, note: str):
     pdf.multi_cell(0, 5, note)
 
 
-# ── INV-001: Harper & Whitfield ─────────────────────────────────────────────────
+# ── INV-001: Harper & Whitfield ───────────────────────────────────────────────
 pdf = FPDF()
 base_invoice(pdf, "Harper & Whitfield LLP",
              ["742 Madison Avenue", "New York, NY 10065", "Tel: (212) 555-0147"],
@@ -77,7 +77,7 @@ pdf.output(os.path.join(OUT, "INV-001_Harper_Whitfield.pdf"))
 print("Created INV-001_Harper_Whitfield.pdf")
 
 
-# ── INV-002: Ashford ─────────────────────────────────────────────────────────
+# ── INV-002: Ashford ──────────────────────────────────────────────────────────
 pdf = FPDF()
 base_invoice(pdf, "Ashford LLP",
              ["500 Fifth Avenue, 14th Floor", "New York, NY 10110", "Tel: (212) 555-0238"],
@@ -93,10 +93,10 @@ pdf.output(os.path.join(OUT, "INV-002_Ashford.pdf"))
 print("Created INV-002_Ashford.pdf")
 
 
-# ── INV-003: Meridian Securities ────────────────────────────────────────────────────
+# ── INV-003: Meridian Securities ──────────────────────────────────────────────
 pdf = FPDF()
 base_invoice(pdf, "Meridian Securities LLC",
-             ["350 Park Avenue, 22nd Floor", "New York, NY 10022", "Tel: (212) 555-0391"],
+             ["350 Park Avenue, 22nd Floor", "New York, NY 10065", "Tel: (212) 555-0391"],
              "MS-2026-TX-0047", "March 3, 2026")
 line_items_table(pdf, [
     ("M&A Advisory Fee - Project Titan Acquisition", "$1,200,000.00"),
@@ -109,12 +109,12 @@ pdf.output(os.path.join(OUT, "INV-003_Meridian_Securities.pdf"))
 print("Created INV-003_Meridian_Securities.pdf")
 
 
-# ── INV-004: Pinnacle Advisory Group ── INTENTIONALLY OMITTED ─────────────────────────
+# ── INV-004: Pinnacle Advisory ── INTENTIONALLY OMITTED ──────────────────────
 # Due Diligence - $300,000 — no file created
 print("SKIPPED INV-004_Pinnacle_Advisory.pdf (intentional gap)")
 
 
-# ── INV-005: Greenleaf Consulting ───────────────────────────────────────────────────────
+# ── INV-005: Greenleaf Consulting ─────────────────────────────────────────────
 pdf = FPDF()
 base_invoice(pdf, "Greenleaf Consulting",
              ["275 Seventh Avenue, Suite 800", "New York, NY 10001", "Tel: (212) 555-0472"],
@@ -130,7 +130,7 @@ pdf.output(os.path.join(OUT, "INV-005_Greenleaf_Consulting.pdf"))
 print("Created INV-005_Greenleaf_Consulting.pdf")
 
 
-# ── INV-006: PwC ── INTENTIONALLY OMITTED ────────────────────────────────────
+# ── INV-006: Sterling & Associates ── INTENTIONALLY OMITTED ──────────────────
 # Tax Advisory - $150,000 — no file created
 print("SKIPPED INV-006_Sterling.pdf (intentional gap)")
 
@@ -157,7 +157,7 @@ pdf.output(os.path.join(OUT, "INV-008_Misc_Closing.pdf"))
 print("Created INV-008_Misc_Closing.pdf")
 
 
-# ── EMAIL-001: Crossbridge Partners ───────────────────────────────────────────────
+# ── EMAIL-001: Crossbridge Partners ──────────────────────────────────────────
 pdf = FPDF()
 pdf.add_page()
 pdf.set_font("Helvetica", "B", 13)
